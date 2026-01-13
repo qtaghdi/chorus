@@ -1,4 +1,4 @@
-# 🎵 CHORUS
+# CHORUS
 
 > **Vinyl Your Vibe.**
 > 당신의 음악 취향을 3D 바이닐 카드로 기록하고 공유하세요.
@@ -12,7 +12,7 @@
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 * **Music Search**: 별도의 로그인 없이 Apple iTunes API를 활용해 전 세계 모든 음원을 검색합니다.
 * **3D Interactive Vinyl**: **Threlte(Three.js)**를 사용하여 실제처럼 회전하고 빛을 반사하는 3D LP판을 렌더링합니다.
