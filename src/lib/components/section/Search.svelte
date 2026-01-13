@@ -1,120 +1,39 @@
 <script lang="ts">
-    import ky from 'ky';
-    import {fade, fly} from 'svelte/transition';
+    import { fade, fly } from 'svelte/transition';
+    import { SearchController, type Track } from '$lib/logic/SearchController.svelte';
 
     /**
-     * Component Props Interface
-     * @property {(track: any) => void} onselect - Callback function to notify parent of track selection.
+     * 컴포넌트 Props
+     * @property {(track: Track) => void} onselect - 트랙 선택 시 부모로 전달되는 콜백
      */
-    let {onselect} = $props();
+    let { onselect } = $props();
 
     /**
-     * Stores the user's input string for the search query.
-     * @type {string}
+     * 검색 화면의 상태 및 로직을 담당하는 컨트롤러
      */
-    let query: string = $state('');
+    const controller = new SearchController();
 
     /**
-     * Indicates whether a network request is currently active.
-     * @type {boolean}
+     * 트랙 선택 핸들러
+     * - 햅틱 피드백 실행
+     * - 부모 컴포넌트로 선택된 트랙 전달
+     *
+     * @param {Track} track - 선택된 트랙
      */
-    let isLoading: boolean = $state(false);
-
-    /**
-     * Stores the array of track objects fetched from the API.
-     * @type {any[]}
-     */
-    let searchResults: any[] = $state([]);
-
-    /**
-     * Controls the layout mode.
-     * - false: Hero mode (centered search bar)
-     * - true: Result mode (search bar at top)
-     * @type {boolean}
-     */
-    let isResultMode: boolean = $state(false);
-
-    /**
-     * Triggers a short haptic feedback vibration on supported devices.
-     * Used for button clicks and interactions.
-     */
-    const triggerHaptic = () => {
-        if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(10); // 10ms short vibration
-        }
-    };
-
-    /**
-     * Executes the search operation.
-     * Fetches data from the internal API and updates the UI state.
-     * Triggers haptic feedback.
-     */
-    const handleSearch = async () => {
-        if (!query) return;
-
-        triggerHaptic(); // Haptic feedback on search start
-        isLoading = true;
-        isResultMode = true;
-        searchResults = [];
-
-        // Dismiss mobile keyboard
-        const activeElement = document.activeElement as HTMLElement;
-        activeElement?.blur();
-
-        try {
-            searchResults = await ky.get('/api/search', {
-                searchParams: {q: query}
-            }).json<any[]>();
-        } catch (error) {
-            console.error('API Error', error);
-            searchResults = [];
-        } finally {
-            isLoading = false;
-        }
-    };
-
-    /**
-     * Calls the onselect callback prop provided by the parent.
-     * Triggers haptic feedback.
-     * @param {any} track - The selected track object.
-     */
-    const selectTrack = (track: any) => {
-        triggerHaptic(); // Haptic feedback on track selection
+    const handleTrackSelect = (track: Track) => {
+        controller.triggerHaptic();
         if (onselect) onselect(track);
-    };
-
-    /**
-     * Resets the search state and returns to the initial 'Hero' view.
-     * Triggers haptic feedback.
-     */
-    const clearSearch = () => {
-        triggerHaptic(); // Haptic feedback on clear/back
-        query = '';
-        isResultMode = false;
-        searchResults = [];
-    };
-
-    /**
-     * Handles keydown events on the input.
-     * Prevents duplicate submission during IME composition (e.g., Korean).
-     * @param {KeyboardEvent} e - The keyboard event.
-     */
-    const handleKeydown = (e: KeyboardEvent) => {
-        if (e.isComposing) return; // Ignore if IME is composing
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
     };
 </script>
 
 <div
         class="flex flex-col items-center w-full min-h-dvh max-w-lg mx-auto px-6 relative z-50 transition-all duration-700 ease-in-out"
-        class:justify-center={!isResultMode}
-        class:justify-start={isResultMode}
-        class:pt-20={isResultMode}
+        class:justify-center={!controller.isResultMode}
+        class:justify-start={controller.isResultMode}
+        class:pt-20={controller.isResultMode}
 >
 
-    {#if !isResultMode}
+    {#if !controller.isResultMode}
         <div class="text-center mb-10" out:fly={{ y: -20, duration: 300 }}>
             <h1 class="text-6xl font-extrabold tracking-tighter text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)] mb-2">
                 CHORUS
@@ -123,13 +42,13 @@
         </div>
     {/if}
 
-    <div class="w-full relative group z-20 transition-all duration-500" class:mb-6={isResultMode}>
+    <div class="w-full relative group z-20 transition-all duration-500" class:mb-6={controller.isResultMode}>
         <div class="absolute -inset-0.5 bg-linear-to-r from-green-400 to-purple-500 rounded-full blur opacity-30 group-focus-within:opacity-100 transition duration-700"></div>
 
         <div class="relative flex items-center bg-white/10 backdrop-blur-xl rounded-full border border-white/20 shadow-2xl">
-            {#if isResultMode}
+            {#if controller.isResultMode}
                 <button
-                        onclick={clearSearch}
+                        onclick={() => controller.clear()}
                         class="pl-4 pr-2 text-white/50 hover:text-white transition-colors"
                         in:fade
                 >
@@ -139,15 +58,15 @@
 
             <input
                     type="text"
-                    bind:value={query}
+                    bind:value={controller.query}
                     placeholder="노래 제목이나 가수를 입력하세요"
                     class="flex-1 bg-transparent text-white px-4 py-4 text-lg font-medium focus:outline-none placeholder:text-white/30"
-                    onkeydown={handleKeydown}
+                    onkeydown={(e) => controller.handleKeydown(e)}
             />
 
             <button
-                    onclick={handleSearch}
-                    disabled={isLoading}
+                    onclick={() => controller.search()}
+                    disabled={controller.isLoading}
                     class="mr-2 px-6 py-2 rounded-full bg-white text-black font-bold text-sm hover:scale-105 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
             >
                 검색
@@ -155,11 +74,11 @@
         </div>
     </div>
 
-    {#if isResultMode}
+    {#if controller.isResultMode}
         <div class="w-full flex-1 min-h-0 overflow-y-auto scrollbar-hide pb-20 mask-image-gradient"
              in:fly={{ y: 20, duration: 500, delay: 200 }}>
 
-            {#if isLoading}
+            {#if controller.isLoading}
                 <div class="space-y-3">
                     {#each Array(6) as _}
                         <div class="w-full flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-md animate-pulse">
@@ -173,17 +92,17 @@
                 </div>
 
             {:else}
-                {#if searchResults.length === 0}
+                {#if controller.searchResults.length === 0}
                     <div class="text-center text-white/40 py-20 font-light flex flex-col items-center">
                         <span class="text-4xl mb-4">🤔</span>
                         <p>검색 결과가 없습니다.</p>
                     </div>
                 {:else}
                     <div class="space-y-3">
-                        {#each searchResults as track}
+                        {#each controller.searchResults as track}
                             <button
                                     class="w-full flex items-center gap-4 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 active:scale-[0.98] transition-all group backdrop-blur-md"
-                                    onclick={() => selectTrack(track)}
+                                    onclick={() => handleTrackSelect(track)}
                             >
                                 <img src={track.cover} alt="album art"
                                      class="w-14 h-14 rounded-lg shadow-lg object-cover bg-neutral-800"/>
