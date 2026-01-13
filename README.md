@@ -8,7 +8,7 @@
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![Threlte](https://img.shields.io/badge/Threlte-7.0-black?style=for-the-badge)
 
-**Chorus**는 사용자가 좋아하는 노래를 검색하여, **회전하는 3D LP판(Vinyl)**이 담긴 감성적인 카드로 만들어주는 웹 애플리케이션입니다. 생성된 카드는 인스타그램 스토리 규격(9:16)에 최적화되어 있으며, 고화질 이미지로 다운로드할 수 있습니다.
+**Chorus**는 사용자가 좋아하는 노래를 검색하여, **회전하는 3D LP판(Vinyl)** 이 담긴 감성적인 카드로 만들어주는 웹 애플리케이션입니다. 생성된 카드는 인스타그램 스토리 규격(9:16)에 최적화되어 있으며, 고화질 이미지로 다운로드할 수 있습니다.
 
 ---
 
