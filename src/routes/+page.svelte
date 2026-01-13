@@ -1,31 +1,17 @@
 <script lang="ts">
     import SearchSection from '$lib/components/section/Search.svelte';
-    import StudioSection from '$lib/components/section/Studio.svelte';
+    import { goto } from '$app/navigation';
 
     /**
-     * Holds the currently selected track data.
-     * Uses Svelte 5 `$state` rune for reactivity.
-     * If null, the SearchSection is displayed.
-     * If populated, the StudioSection is displayed.
-     * @type {any | null}
-     */
-    let selectedTrack: any = $state(null);
-
-    /**
-     * Callback function triggered when a track is selected in the SearchSection.
-     * Updates the state to switch views to the StudioSection.
-     * @param {any} track - The selected track data object.
+     * Handles the track selection event from the SearchSection.
+     * Navigates to the dynamic track page (/track/[id]) instead of rendering locally.
+     * This enables URL sharing and deep linking.
+     * * @param {any} track - The selected track object containing the 'id'.
      */
     const handleSelect = (track: any) => {
-        selectedTrack = track;
-    };
-
-    /**
-     * Callback function triggered when the back button is clicked in the StudioSection.
-     * Resets the selectedTrack state to null to return to the search view.
-     */
-    const handleBack = () => {
-        selectedTrack = null;
+        if (track.id) {
+            goto(`/track/${track.id}`);
+        }
     };
 </script>
 
@@ -38,11 +24,7 @@
     </div>
 
     <main class="flex-1 w-full h-full relative z-10 backdrop-blur-[1px]">
-        {#if !selectedTrack}
-            <SearchSection onselect={handleSelect} />
-        {:else}
-            <StudioSection track={selectedTrack} onback={handleBack} />
-        {/if}
+        <SearchSection onselect={handleSelect} />
     </main>
 
 </div>

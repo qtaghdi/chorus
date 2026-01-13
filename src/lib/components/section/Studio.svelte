@@ -16,14 +16,12 @@
 
     /**
      * Indicates whether the image download process is currently active.
-     * Used to disable the button and show loading text.
      * @type {boolean}
      */
     let isSaving = $state(false);
 
     /**
      * Indicates whether the component has mounted.
-     * Used to conditionally render the 3D scene (client-side only).
      * @type {boolean}
      */
     let isMounted = $state(false);
@@ -44,27 +42,48 @@
     /** @type {string} Formatted total duration time (MM:SS). */
     let durationStr = $state("0:30");
 
-    /** * Stores the dominant color extracted from the album cover.
-     * Format: "R, G, B" (e.g., "50, 50, 50").
-     * Used for the dynamic background gradient.
-     * @type {string}
-     */
+    /** @type {string} Extracted dominant color from album cover. */
     let dominantColor = $state("50, 50, 50");
 
     /**
-     * Triggers a short haptic feedback vibration on supported devices.
-     * Used to enhance user interaction (tactile feel).
+     * Triggers a short haptic feedback vibration.
      */
     const triggerHaptic = () => {
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(10); // 10ms short vibration
+            navigator.vibrate(10);
+        }
+    };
+
+    /**
+     * Handles the native sharing functionality.
+     * Opens the OS native share sheet on mobile.
+     * Fallback to clipboard copy on desktop.
+     */
+    const handleShare = async () => {
+        triggerHaptic();
+
+        const shareData = {
+            title: 'CHORUS',
+            text: `🎵 ${track.title} - ${track.artist}\n이 노래 어때요? 바이닐 카드로 확인해보세요.`,
+            url: window.location.href // Current URL with Track ID
+        };
+
+        try {
+            if (navigator.share && navigator.canShare(shareData)) {
+                // Mobile Native Share
+                await navigator.share(shareData);
+            } else {
+                // PC / Unsupported Fallback
+                await navigator.clipboard.writeText(window.location.href);
+                alert('링크가 클립보드에 복사되었습니다! 🔗');
+            }
+        } catch (err) {
+            console.log('Share canceled or failed', err);
         }
     };
 
     /**
      * Extracts the dominant color from the album cover image using the Canvas API.
-     * Draw the image onto a 1x1 canvas to calculate the average pixel color without external libraries.
-     * @param {string} imgUrl - The URL of the album cover image.
      */
     const extractColor = (imgUrl: string) => {
         const img = new Image();
@@ -76,7 +95,6 @@
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
 
-            // Resize to 1x1 to get the average color
             canvas.width = 1;
             canvas.height = 1;
             ctx.drawImage(img, 0, 0, 1, 1);
@@ -86,11 +104,6 @@
         };
     };
 
-    /**
-     * Formats a time in seconds into a string (MM:SS).
-     * @param {number} seconds - Time in seconds.
-     * @returns {string} Formatted time string (e.g., "0:30").
-     */
     const formatTime = (seconds: number): string => {
         if (isNaN(seconds)) return "0:00";
         const mins = Math.floor(seconds / 60);
@@ -98,12 +111,6 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    /**
-     * Lifecycle hook: Runs when the component mounts.
-     * 1. Extracts the dominant color from the cover.
-     * 2. Initializes the Audio object and event listeners for playback.
-     * 3. Attempts autoplay.
-     */
     onMount(() => {
         isMounted = true;
 
@@ -115,7 +122,6 @@
             audio = new Audio(track.audio);
             audio.volume = 0.5;
 
-            // Update progress and time display
             audio.addEventListener('timeupdate', () => {
                 if (!audio) return;
                 const current = audio.currentTime;
@@ -125,7 +131,6 @@
                 durationStr = formatTime(duration);
             });
 
-            // Reset state when audio ends
             audio.addEventListener('ended', () => {
                 isPlaying = false;
                 progress = 0;
@@ -133,7 +138,6 @@
                 if (audio) audio.currentTime = 0;
             });
 
-            // Autoplay attempt
             audio.play().then(() => {
                 isPlaying = true;
             }).catch(e => {
@@ -143,10 +147,6 @@
         }
     });
 
-    /**
-     * Lifecycle hook: Runs when the component is destroyed.
-     * Pauses audio and cleans up resources to prevent memory leaks.
-     */
     onDestroy(() => {
         if (audio) {
             audio.pause();
@@ -154,24 +154,14 @@
         }
     });
 
-    /**
-     * Toggles the play/pause state of the audio.
-     * Triggers haptic feedback.
-     */
     const toggleAudio = () => {
-        triggerHaptic(); // Haptic feedback
+        triggerHaptic();
         if (!audio) return;
         if (isPlaying) audio.pause();
         else audio.play();
         isPlaying = !isPlaying;
     };
 
-    /**
-     * Configures the Three.js WebGLRenderer.
-     * Specifically enables 'preserveDrawingBuffer' to allow the canvas to be captured by html-to-image.
-     * @param {HTMLCanvasElement} canvas - The canvas element.
-     * @returns {WebGLRenderer} Configured renderer instance.
-     */
     const createRenderer = (canvas: HTMLCanvasElement) => {
         return new WebGLRenderer({
             canvas,
@@ -181,20 +171,14 @@
         });
     };
 
-    /**
-     * Captures the DOM element (#capture-area) and downloads it as a PNG image.
-     * Uses 'html-to-image' library.
-     * Triggers haptic feedback.
-     */
     const downloadImage = async () => {
-        triggerHaptic(); // Haptic feedback
+        triggerHaptic();
         const element = document.getElementById('capture-area');
         if (!element) return;
 
         isSaving = true;
         try {
             const { toPng } = await import('html-to-image');
-            // Add slight delay to ensure rendering is complete
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const dataUrl = await toPng(element, { cacheBust: true, pixelRatio: 3 });
@@ -218,12 +202,22 @@
             style="background: radial-gradient(circle at 50% 30%, rgba({dominantColor}, 0.6) 0%, rgba(0,0,0,0) 70%);"
     ></div>
 
-    <div class="w-full max-w-sm flex justify-start px-6 mb-4 z-30">
+    <div class="w-full max-w-sm flex justify-between items-center px-6 mb-4 z-30">
         <button
                 onclick={() => { triggerHaptic(); onback(); }}
-                class="text-white/60 hover:text-white flex items-center gap-2 text-sm font-medium bg-black/20 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 transition-colors"
+                class="text-white/60 hover:text-white flex items-center gap-2 text-sm font-medium bg-black/20 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 transition-colors active:scale-95"
         >
-            <span class="text-lg">←</span> 다시 검색하기
+            <span class="text-lg">←</span> 목록
+        </button>
+
+        <button
+                onclick={handleShare}
+                class="w-10 h-10 flex items-center justify-center rounded-full bg-black/20 backdrop-blur-md border border-white/10 text-white/80 hover:bg-white/10 hover:text-white transition-all active:scale-95"
+                aria-label="Share Link"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+            </svg>
         </button>
     </div>
 
@@ -236,7 +230,6 @@
             {#key track.cover}
                 <div class="absolute inset-0 bg-cover bg-center opacity-40 blur-3xl scale-125 saturate-200" style="background-image: url('{track.cover}');"></div>
             {/key}
-
             <div class="absolute inset-0 opacity-20 pointer-events-none" style="background-image: url('https://grainy-gradients.vercel.app/noise.svg');"></div>
             <div class="absolute inset-0 bg-linear-to-b from-transparent via-black/40 to-black/90"></div>
 
