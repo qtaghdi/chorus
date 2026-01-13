@@ -14,6 +14,9 @@ importers:
       '@threlte/extras':
         specifier: ^9.7.1
         version: 9.7.1(@types/three@0.182.0)(svelte@5.46.3)(three@0.182.0)
+      '@vercel/analytics':
+        specifier: ^1.6.1
+        version: 1.6.1(@sveltejs/kit@2.49.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.46.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2)))(svelte@5.46.3)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2)))(svelte@5.46.3)
       html-to-image:
         specifier: ^1.11.13
         version: 1.11.13
@@ -894,6 +897,32 @@ packages:
   '@typescript-eslint/visitor-keys@8.53.0':
     resolution: {integrity: sha512-LZ2NqIHFhvFwxG0qZeLL9DvdNAHPGCY5dIRwBhyYeU+LfLhcStE1ImjsuTG/WaVh3XysGaeLW8Rqq7cGkPCFvw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@vercel/analytics@1.6.1':
+    resolution: {integrity: sha512-oH9He/bEM+6oKlv3chWuOOcp8Y6fo6/PSro8hEkgCW3pu9/OiCXiUpRUogDh3Fs3LH2sosDrx8CxeOLBEE+afg==}
+    peerDependencies:
+      '@remix-run/react': ^2
+      '@sveltejs/kit': ^1 || ^2
+      next: '>= 13'
+      react: ^18 || ^19 || ^19.0.0-rc
+      svelte: '>= 4'
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      '@remix-run/react':
+        optional: true
+      '@sveltejs/kit':
+        optional: true
+      next:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
 
   '@vercel/nft@1.2.0':
     resolution: {integrity: sha512-68326CAWJmd6P1cUgUmufor5d4ocPbpLxiy9TKG6U/a4aWEx9aC+NIzaDI6GmBZVpt3+MkO3OwnQ2YcgJg12Qw==}
@@ -2494,6 +2523,11 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.53.0
       eslint-visitor-keys: 4.2.1
+
+  '@vercel/analytics@1.6.1(@sveltejs/kit@2.49.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.46.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2)))(svelte@5.46.3)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2)))(svelte@5.46.3)':
+    optionalDependencies:
+      '@sveltejs/kit': 2.49.4(@sveltejs/vite-plugin-svelte@6.2.4(svelte@5.46.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2)))(svelte@5.46.3)(typescript@5.9.3)(vite@7.3.1(@types/node@24.10.7)(jiti@2.6.1)(lightningcss@1.30.2))
+      svelte: 5.46.3
 
   '@vercel/nft@1.2.0(rollup@4.55.1)':
     dependencies:
