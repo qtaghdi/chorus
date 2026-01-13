@@ -19,36 +19,47 @@
      * Used to disable the button and show loading text.
      * @type {boolean}
      */
-    let isSaving: boolean = $state(false);
+    let isSaving = $state(false);
 
     /**
      * Indicates whether the component has mounted.
      * Used to conditionally render the 3D scene (client-side only).
      * @type {boolean}
      */
-    let isMounted: boolean = $state(false);
+    let isMounted = $state(false);
 
+    // --- Audio State Management ---
     /** @type {HTMLAudioElement | null} Audio instance for preview playback. */
     let audio: HTMLAudioElement | null = null;
 
     /** @type {boolean} Tracks the playing status of the audio. */
-    let isPlaying: boolean = $state(false);
+    let isPlaying = $state(false);
 
     /** @type {number} Current playback progress percentage (0-100). */
-    let progress: number = $state(0);
+    let progress = $state(0);
 
     /** @type {string} Formatted current playback time (MM:SS). */
-    let currentTimeStr: string = $state("0:00");
+    let currentTimeStr = $state("0:00");
 
     /** @type {string} Formatted total duration time (MM:SS). */
-    let durationStr: string = $state("0:30");
+    let durationStr = $state("0:30");
 
     /** * Stores the dominant color extracted from the album cover.
      * Format: "R, G, B" (e.g., "50, 50, 50").
      * Used for the dynamic background gradient.
      * @type {string}
      */
-    let dominantColor: string = $state("50, 50, 50");
+    let dominantColor = $state("50, 50, 50");
+
+    /**
+     * Triggers a short haptic feedback vibration on supported devices.
+     * Used to enhance user interaction (tactile feel).
+     */
+    const triggerHaptic = () => {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(10); // 10ms short vibration
+        }
+    };
 
     /**
      * Extracts the dominant color from the album cover image using the Canvas API.
@@ -145,8 +156,10 @@
 
     /**
      * Toggles the play/pause state of the audio.
+     * Triggers haptic feedback.
      */
     const toggleAudio = () => {
+        triggerHaptic(); // Haptic feedback
         if (!audio) return;
         if (isPlaying) audio.pause();
         else audio.play();
@@ -171,8 +184,10 @@
     /**
      * Captures the DOM element (#capture-area) and downloads it as a PNG image.
      * Uses 'html-to-image' library.
+     * Triggers haptic feedback.
      */
     const downloadImage = async () => {
+        triggerHaptic(); // Haptic feedback
         const element = document.getElementById('capture-area');
         if (!element) return;
 
@@ -205,7 +220,7 @@
 
     <div class="w-full max-w-sm flex justify-start px-6 mb-4 z-30">
         <button
-                onclick={onback}
+                onclick={() => { triggerHaptic(); onback(); }}
                 class="text-white/60 hover:text-white flex items-center gap-2 text-sm font-medium bg-black/20 px-4 py-2 rounded-full backdrop-blur-md border border-white/10 transition-colors"
         >
             <span class="text-lg">←</span> 다시 검색하기

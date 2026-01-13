@@ -35,12 +35,24 @@
     let isResultMode: boolean = $state(false);
 
     /**
+     * Triggers a short haptic feedback vibration on supported devices.
+     * Used for button clicks and interactions.
+     */
+    const triggerHaptic = () => {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(10); // 10ms short vibration
+        }
+    };
+
+    /**
      * Executes the search operation.
      * Fetches data from the internal API and updates the UI state.
+     * Triggers haptic feedback.
      */
     const handleSearch = async () => {
         if (!query) return;
 
+        triggerHaptic(); // Haptic feedback on search start
         isLoading = true;
         isResultMode = true;
         searchResults = [];
@@ -63,16 +75,20 @@
 
     /**
      * Calls the onselect callback prop provided by the parent.
+     * Triggers haptic feedback.
      * @param {any} track - The selected track object.
      */
     const selectTrack = (track: any) => {
+        triggerHaptic(); // Haptic feedback on track selection
         if (onselect) onselect(track);
     };
 
     /**
      * Resets the search state and returns to the initial 'Hero' view.
+     * Triggers haptic feedback.
      */
     const clearSearch = () => {
+        triggerHaptic(); // Haptic feedback on clear/back
         query = '';
         isResultMode = false;
         searchResults = [];
