@@ -1,24 +1,28 @@
 <script lang="ts">
-    import SearchSection from '$lib/components/section/Search.svelte';
-    import StudioSection from '$lib/components/section/Studio.svelte';
+    import SearchSection from '$lib/components/section/search.svelte';
+    import StudioSection from '$lib/components/section/studio.svelte';
 
     /**
-     * Stores the selected track information.
-     * Null indicates the search view, while an object triggers the studio view.
+     * Holds the currently selected track data.
+     * Uses Svelte 5 `$state` rune for reactivity.
+     * If null, the SearchSection is displayed.
+     * If populated, the StudioSection is displayed.
      * @type {any | null}
      */
-    let selectedTrack: any = null;
+    let selectedTrack: any = $state(null);
 
     /**
-     * Updates the state when a user selects a track from the search results.
-     * @param {CustomEvent} event
+     * Callback function triggered when a track is selected in the SearchSection.
+     * Updates the state to switch views to the StudioSection.
+     * @param {any} track - The selected track data object.
      */
-    const handleSelect = (event: CustomEvent) => {
-        selectedTrack = event.detail;
+    const handleSelect = (track: any) => {
+        selectedTrack = track;
     };
 
     /**
-     * Resets the state to return to the search view.
+     * Callback function triggered when the back button is clicked in the StudioSection.
+     * Resets the selectedTrack state to null to return to the search view.
      */
     const handleBack = () => {
         selectedTrack = null;
@@ -35,9 +39,9 @@
 
     <main class="flex-1 w-full h-full relative z-10 backdrop-blur-[1px]">
         {#if !selectedTrack}
-            <SearchSection on:select={handleSelect} />
+            <SearchSection onselect={handleSelect} />
         {:else}
-            <StudioSection track={selectedTrack} on:back={handleBack} />
+            <StudioSection track={selectedTrack} onback={handleBack} />
         {/if}
     </main>
 

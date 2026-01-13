@@ -1,7 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
+/**
+ * Handles GET requests to search for tracks via iTunes API.
+ * Returns a list of tracks with high-resolution cover art and audio previews.
+ * * @param {Object} event - The SvelteKit request event.
+ * @param {URL} event.url - The URL object containing search parameters.
+ * @returns {Promise<Response>} JSON response containing track data or error message.
+ */
+export const GET: RequestHandler = async ({ url }: { url: URL; }): Promise<Response> => {
     const query = url.searchParams.get('q');
     if (!query) return json({ error: 'No query provided' }, { status: 400 });
 
@@ -32,7 +39,8 @@ export const GET: RequestHandler = async ({ url }) => {
                 title: track.trackName,
                 artist: track.artistName,
                 cover: highResCover,
-                album: track.collectionName
+                album: track.collectionName,
+                audio: track.previewUrl
             };
         });
 
