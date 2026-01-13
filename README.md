@@ -1,38 +1,61 @@
-# sv
+# 🎵 CHORUS
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+> **Vinyl Your Vibe.**
+> 당신의 음악 취향을 3D 바이닐 카드로 기록하고 공유하세요.
 
-## Creating a project
+![Svelte](https://img.shields.io/badge/Svelte-5.0-orange?style=for-the-badge&logo=svelte)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)
+![Threlte](https://img.shields.io/badge/Threlte-7.0-black?style=for-the-badge)
 
-If you're seeing this, you've probably already done this step. Congrats!
+**Chorus**는 사용자가 좋아하는 노래를 검색하여, **회전하는 3D LP판(Vinyl)**이 담긴 감성적인 카드로 만들어주는 웹 애플리케이션입니다. 생성된 카드는 인스타그램 스토리 규격(9:16)에 최적화되어 있으며, 고화질 이미지로 다운로드할 수 있습니다.
 
-```sh
-# create a new project in the current directory
-npx sv create
+---
 
-# create a new project in my-app
-npx sv create my-app
+## ✨ Key Features
+
+* **Music Search**: 별도의 로그인 없이 Apple iTunes API를 활용해 전 세계 모든 음원을 검색합니다.
+* **3D Interactive Vinyl**: **Threlte(Three.js)**를 사용하여 실제처럼 회전하고 빛을 반사하는 3D LP판을 렌더링합니다.
+* **Glassmorphism UI**: 오로라 배경과 다크 글래스모피즘(Dark Glassmorphism) 디자인으로 트렌디한 사용자 경험을 제공합니다.
+* **High-Quality Capture**: WebGL 캔버스(3D)를 포함한 화면 전체를 고해상도 PNG 이미지로 저장합니다.
+* **Mobile First**: 모바일 환경(iOS/Android)에서의 터치 인터랙션과 뷰포트(DVH)에 완벽하게 대응합니다.
+
+---
+
+## Tech Stack
+
+### Core
+* **Framework**: [SvelteKit](https://kit.svelte.dev/) (Svelte 5 Runes)
+* **Language**: TypeScript
+* **Styling**: Tailwind CSS
+
+### 3D & Graphics
+* **3D Engine**: [Threlte](https://threlte.xyz/) (Three.js wrapper for Svelte)
+* **Capture**: html-to-image
+
+### Network
+* **Data Fetching**: [Ky](https://github.com/sindresorhus/ky) (Lightweight fetch wrapper)
+* **API**: Apple iTunes Search API (No Auth required)
+
+---
+
+## Getting Started
+
+이 프로젝트는 **pnpm**을 패키지 매니저로 사용합니다.
+
+### 1. Clone & Install
+```bash
+git clone [https://github.com/your-username/chorus.git](https://github.com/your-username/chorus.git)
+cd chorus
+pnpm install
 ```
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+### 2. Run Development Server
+```bash
+pnpm build
 ```
 
-## Building
+---
+## License
 
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+This project is open source and available under the [MIT License](LICENSE).
