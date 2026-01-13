@@ -1,29 +1,39 @@
-import { spring } from 'svelte/motion';
+import { Spring } from 'svelte/motion';
 import { WebGLRenderer } from 'three';
 
 /**
  * @class StudioControllerSvelte
- * @description 스튜디오(재생 및 캡처) 화면의 핵심 비즈니스 로직을 담당하는 클래스입니다.
- * - 오디오 재생 및 Web Audio API를 통한 시각화(Visualizer) 데이터 처리
- * - 3D 모델(LP판)의 회전 및 스케일 애니메이션 제어
- * - 앨범 커버 색상 추출 및 이미지 캡처 기능
+ * @description
+ * Studio(재생 및 캡처) 화면의 핵심 비즈니스 로직을 담당하는 컨트롤러 클래스
+ *
+ * @remarks
+ * - Web Audio API 기반 오디오 재생 및 주파수 분석
+ * - Threlte/Three.js 기반 3D 비주얼라이저 제어
+ * - 이미지 캡처 및 Web Share API 연동
  */
 export class StudioControllerSvelte {
-    /** @description 이미지 저장(다운로드) 중 로딩 상태 */
+    /** @description 이미지 저장(다운로드) 진행 여부 */
     isSaving = $state(false);
+
     /** @description 오디오 재생 중 여부 */
     isPlaying = $state(false);
+
     /** @description 오디오 재생 진행률 (0 ~ 100) */
     progress = $state(0);
+
     /** @description 현재 재생 시간 문자열 (예: "1:23") */
-    currentTimeStr = $state("0:00");
-    /** @description 총 재생 시간 문자열 (예: "3:45") */
-    durationStr = $state("0:30");
-    /** @description 앨범 커버에서 추출한 주요 색상 (RGB 문자열, 예: "50, 50, 50") */
-    dominantColor = $state("50, 50, 50");
+    currentTimeStr = $state('0:00');
+
+    /** @description 전체 재생 시간 문자열 (예: "3:45") */
+    durationStr = $state('0:30');
+
+    /** @description 앨범 커버에서 추출한 주요 색상 (RGB 문자열) */
+    dominantColor = $state('50, 50, 50');
+
     /** @description 사용자가 입력한 커스텀 메시지 */
-    customMessage = $state("");
-    /** @description 오디오 저음역대(Bass) 파워 수치 (0.0 ~ 1.0, Visualizer용) */
+    customMessage = $state('');
+
+    /** @description 저음역대(Bass) 파워 (0.0 ~ 1.0) */
     bassPower = $state(0);
 
     #track: any;
@@ -31,32 +41,39 @@ export class StudioControllerSvelte {
     #audioContext: AudioContext | null = null;
     #analyser: AnalyserNode | null = null;
     #dataArray: Uint8Array | null = null;
-    #animationFrameId: number | undefined;
-
-    /** @description LP판 회전 속도를 제어하는 스프링 모션
-     * - `stiffness`, `damping`을 통해 부드러운 가감속 효과 구현
-     */
-    rotationSpeed = spring(0, { stiffness: 0.05, damping: 0.2 });
-
-    /** * @description 비트(Bass)에 반응하는 3D 오브젝트 스케일 모션
-     */
-    visualizerScale = spring(1, { stiffness: 0.2, damping: 0.5 });
+    #animationFrameId?: number;
 
     /**
-     * @constructor
-     * @param {any} track - 재생할 트랙 정보 객체
+     * @description
+     * LP 회전 속도를 제어하는 스프링 모션 값
+     *
+     * @remarks
+     * - 오디오 재생 상태에 따라 자연스러운 가속/감속 표현
+     */
+    rotationSpeed = new Spring(0, { stiffness: 0.05, damping: 0.2 });
+
+    /**
+     * @description
+     * 오디오 비트에 반응하는 3D 오브젝트 스케일 모션
+     */
+    visualizerScale = new Spring(1, { stiffness: 0.2, damping: 0.5 });
+
+    /**
+     * @param track 재생할 트랙 정보 객체
      */
     constructor(track: any) {
         this.#track = track;
     }
 
     /**
-     * @method init
-     * @description 컨트롤러 초기화 메서드입니다. 컴포넌트 마운트(`onMount`) 시 호출해야 합니다.
+     * @description
+     * 컨트롤러 초기화 메서드
+     *
+     * @remarks
      * - 앨범 커버 색상 추출
-     * - 오디오 엘리먼트 설정
+     * - 오디오 엘리먼트 생성 및 자동 재생 시도
      */
-    init() {
+    init(): void {
         if (this.#track.cover) {
             this.#extractColor(this.#track.cover);
         }
@@ -64,11 +81,13 @@ export class StudioControllerSvelte {
     }
 
     /**
-     * @method cleanup
-     * @description 리소스 정리 메서드입니다. 컴포넌트 언마운트(`onDestroy`) 시 호출해야 합니다.
-     * - 오디오 정지, AudioContext 해제, 애니메이션 루프 취소
+     * @description
+     * 컨트롤러가 사용한 모든 리소스를 정리
+     *
+     * @remarks
+     * - 컴포넌트 언마운트 시 반드시 호출되어야 함
      */
-    cleanup() {
+    cleanup(): void {
         if (this.#audio) {
             this.#audio.pause();
             this.#audio = null;
@@ -83,20 +102,22 @@ export class StudioControllerSvelte {
 
     /**
      * @private
-     * @method #extractColor
-     * @description 이미지 URL에서 주요 색상을 추출하여 `dominantColor` 상태를 업데이트합니다.
-     * Canvas에 이미지를 1x1 픽셀로 그린 후 픽셀 데이터를 가져오는 방식을 사용합니다.
-     * @param {string} imgUrl - 분석할 이미지 URL
+     * @description
+     * 이미지 URL에서 주요 색상을 추출하여 `dominantColor`를 업데이트
+     *
+     * @param imgUrl 분석할 이미지 URL
      */
-    #extractColor(imgUrl: string) {
+    #extractColor(imgUrl: string): void {
         const img = new Image();
-        img.crossOrigin = "Anonymous";
+        img.crossOrigin = 'Anonymous';
         img.src = imgUrl;
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
-            canvas.width = 1; canvas.height = 1;
+
+            canvas.width = 1;
+            canvas.height = 1;
             ctx.drawImage(img, 0, 0, 1, 1);
             const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
             this.dominantColor = `${r}, ${g}, ${b}`;
@@ -105,13 +126,10 @@ export class StudioControllerSvelte {
 
     /**
      * @private
-     * @method #formatTime
-     * @description 초(seconds) 단위의 시간을 "분:초" 형식의 문자열로 변환합니다.
-     * @param {number} seconds
-     * @returns {string} (예: "1:05")
+     * @description 초 단위 시간을 "분:초" 형식 문자열로 변환
      */
     #formatTime(seconds: number): string {
-        if (isNaN(seconds)) return "0:00";
+        if (isNaN(seconds)) return '0:00';
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -119,15 +137,18 @@ export class StudioControllerSvelte {
 
     /**
      * @private
-     * @method #setupAudioElement
-     * @description HTMLAudioElement를 생성하고 `timeupdate`, `ended` 이벤트를 바인딩합니다.
-     * 초기 실행 시 자동 재생을 시도합니다.
+     * @description
+     * HTMLAudioElement를 생성하고 재생 이벤트를 바인딩
+     *
+     * @remarks
+     * - 최초 호출 시 자동 재생을 시도
+     * - 성공 시 Visualizer 분석 루프 시작
      */
-    #setupAudioElement() {
+    #setupAudioElement(): void {
         if (!this.#track.audio) return;
 
         this.#audio = new Audio();
-        this.#audio.crossOrigin = "anonymous";
+        this.#audio.crossOrigin = 'anonymous';
         this.#audio.src = this.#track.audio;
         this.#audio.volume = 0.5;
 
@@ -142,10 +163,9 @@ export class StudioControllerSvelte {
             this.#stopState();
         });
 
-        // 자동 재생 시도
         this.#audio.play().then(() => {
             this.isPlaying = true;
-            this.rotationSpeed.set(2);
+            this.rotationSpeed.target = 2;
             this.#setupAudioContext();
             this.#analyzeLoop();
         }).catch(() => {
@@ -155,12 +175,12 @@ export class StudioControllerSvelte {
 
     /**
      * @private
-     * @method #setupAudioContext
-     * @description Web Audio API를 사용하여 오디오 시각화(Visualizer)를 위한 컨텍스트와 AnalyserNode를 설정합니다.
-     * 브라우저 보안 정책상 사용자 인터랙션 이후에 활성화될 수 있습니다.
+     * @description
+     * Web Audio API 컨텍스트 및 AnalyserNode 설정
      */
-    #setupAudioContext() {
+    #setupAudioContext(): void {
         if (!this.#audio || this.#audioContext) return;
+
         try {
             const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
             this.#audioContext = new AudioContext();
@@ -171,40 +191,43 @@ export class StudioControllerSvelte {
             source.connect(this.#analyser);
             this.#analyser.connect(this.#audioContext.destination);
         } catch (e) {
-            console.warn("Visualizer Error:", e);
+            console.warn('Visualizer Error:', e);
         }
     }
 
     /**
      * @private
-     * @method #analyzeLoop
-     * @description `requestAnimationFrame`을 사용하여 오디오 주파수 데이터를 실시간으로 분석합니다.
-     * 저음역대(Bass) 데이터를 추출하여 `bassPower` 및 `visualizerScale` 상태를 업데이트합니다.
+     * @description
+     * 오디오 주파수 데이터를 실시간 분석하는 루프
+     *
+     * @remarks
+     * - 저음역대 에너지를 기반으로 시각 효과 업데이트
      */
-    #analyzeLoop = () => {
+    #analyzeLoop = (): void => {
         if (!this.isPlaying || !this.#analyser || !this.#dataArray) return;
+
         this.#analyser.getByteFrequencyData(this.#dataArray);
 
         let sum = 0;
-        const bassRange = 10; // 저음역대 범위 설정
+        const bassRange = 10;
         for (let i = 0; i < bassRange; i++) sum += this.#dataArray[i];
 
-        const normalized = (sum / bassRange) / 255; // 0.0 ~ 1.0 정규화
+        const normalized = (sum / bassRange) / 255;
         this.bassPower = normalized;
-        this.visualizerScale.set(1 + normalized * 0.15); // 비트에 따른 스케일 펌핑
+        this.visualizerScale.target = 1 + normalized * 0.15;
 
         this.#animationFrameId = requestAnimationFrame(this.#analyzeLoop);
     };
 
     /**
      * @private
-     * @method #stopState
-     * @description 오디오 정지 시 관련된 모든 상태(애니메이션, 진행률 등)를 리셋합니다.
+     * @description
+     * 오디오 정지 시 모든 관련 상태를 초기화
      */
-    #stopState() {
+    #stopState(): void {
         this.isPlaying = false;
-        this.rotationSpeed.set(0);
-        this.visualizerScale.set(1);
+        this.rotationSpeed.target = 0;
+        this.visualizerScale.target = 1;
         this.bassPower = 0;
         this.progress = 0;
         if (this.#audio) this.#audio.currentTime = 0;
@@ -212,49 +235,51 @@ export class StudioControllerSvelte {
     }
 
     /**
-     * @method toggleAudio
-     * @description 오디오 재생/일시정지를 토글합니다.
-     * AudioContext가 suspended 상태라면 resume을 시도합니다.
+     * @description
+     * 오디오 재생 / 일시정지 토글
      */
-    toggleAudio() {
+    toggleAudio(): void {
         this.triggerHaptic();
         if (!this.#audio) return;
+
         if (!this.#audioContext) this.#setupAudioContext();
         if (this.#audioContext?.state === 'suspended') this.#audioContext.resume();
 
         if (this.isPlaying) {
             this.#audio.pause();
-            this.#stopState(); // 완전 정지 로직 (일시정지 후 유지하려면 이 부분 수정 필요)
+            this.#stopState();
         } else {
             this.#audio.play();
-            this.rotationSpeed.set(2);
+            this.rotationSpeed.target = 2;
             this.#analyzeLoop();
         }
         this.isPlaying = !this.isPlaying;
     }
 
     /**
-     * @method triggerHaptic
-     * @description 햅틱 피드백을 발생시킵니다.
+     * @description 햅틱 피드백 실행
      */
-    triggerHaptic() {
+    triggerHaptic(): void {
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate(10);
         }
     }
 
     /**
-     * @method handleShare
-     * @description Web Share API를 사용하여 현재 페이지 URL과 메시지를 공유합니다.
-     * API를 지원하지 않는 경우 클립보드에 링크를 복사합니다.
+     * @description
+     * Web Share API를 통해 트랙 정보를 공유
+     *
+     * @returns {Promise<void>}
      */
-    async handleShare() {
+    async handleShare(): Promise<void> {
         this.triggerHaptic();
+
         const shareData = {
             title: 'CHORUS',
             text: `🎵 ${this.#track.title} - ${this.#track.artist}\n"${this.customMessage || '이 노래 같이 들을래?'}"`,
             url: window.location.href
         };
+
         try {
             if (navigator.share && navigator.canShare(shareData)) {
                 await navigator.share(shareData);
@@ -268,20 +293,22 @@ export class StudioControllerSvelte {
     }
 
     /**
-     * @method downloadImage
-     * @description 지정된 HTML 요소를 이미지(PNG)로 변환하여 다운로드합니다.
-     * `html-to-image` 라이브러리를 동적 import하여 사용합니다.
-     * @param {string} elementId - 캡처할 DOM 요소의 ID
+     * @description
+     * 지정된 DOM 요소를 PNG 이미지로 캡처하여 다운로드
+     *
+     * @param elementId 캡처할 요소의 ID
+     * @returns {Promise<void>}
      */
-    async downloadImage(elementId: string) {
+    async downloadImage(elementId: string): Promise<void> {
         this.triggerHaptic();
+
         const element = document.getElementById(elementId);
         if (!element) return;
+
         this.isSaving = true;
 
         try {
             const { toPng } = await import('html-to-image');
-            // DOM 렌더링 확보를 위한 지연
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const dataUrl = await toPng(element, { cacheBust: true, pixelRatio: 2 });
@@ -289,7 +316,7 @@ export class StudioControllerSvelte {
             link.download = `chorus_${this.#track.title}.png`;
             link.href = dataUrl;
             link.click();
-        } catch (err) {
+        } catch {
             alert('저장 실패');
         } finally {
             this.isSaving = false;
@@ -297,16 +324,16 @@ export class StudioControllerSvelte {
     }
 
     /**
-     * @method createRenderer
-     * @description Threlte/Three.js `<Canvas>` 컴포넌트에 전달할 커스텀 WebGLRenderer를 생성합니다.
-     * 이미지 캡처를 위해 `preserveDrawingBuffer: true` 옵션이 설정되어 있습니다.
-     * @param {HTMLCanvasElement} canvas
-     * @returns {WebGLRenderer}
+     * @description
+     * Threlte `<Canvas>`에 전달할 WebGLRenderer 생성
+     *
+     * @param canvas Canvas 엘리먼트
+     * @returns WebGLRenderer
      */
-    createRenderer(canvas: HTMLCanvasElement) {
+    createRenderer(canvas: HTMLCanvasElement): WebGLRenderer {
         return new WebGLRenderer({
             canvas,
-            preserveDrawingBuffer: true, // 이미지 캡처(toDataURL)를 위해 필수
+            preserveDrawingBuffer: true,
             alpha: true,
             antialias: true
         });
