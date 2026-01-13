@@ -1,4 +1,4 @@
-# 🎵 CHORUS
+# CHORUS
 
 > **Vinyl Your Vibe.**
 > 당신의 음악 취향을 3D 바이닐 카드로 기록하고 공유하세요.
@@ -8,11 +8,11 @@
 ![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=for-the-badge&logo=tailwind-css)
 ![Threlte](https://img.shields.io/badge/Threlte-7.0-black?style=for-the-badge)
 
-**Chorus**는 사용자가 좋아하는 노래를 검색하여, **회전하는 3D LP판(Vinyl)**이 담긴 감성적인 카드로 만들어주는 웹 애플리케이션입니다. 생성된 카드는 인스타그램 스토리 규격(9:16)에 최적화되어 있으며, 고화질 이미지로 다운로드할 수 있습니다.
+**Chorus**는 사용자가 좋아하는 노래를 검색하여, **회전하는 3D LP판(Vinyl)** 이 담긴 감성적인 카드로 만들어주는 웹 애플리케이션입니다. 생성된 카드는 인스타그램 스토리 규격(9:16)에 최적화되어 있으며, 고화질 이미지로 다운로드할 수 있습니다.
 
 ---
 
-## ✨ Key Features
+## Key Features
 
 * **Music Search**: 별도의 로그인 없이 Apple iTunes API를 활용해 전 세계 모든 음원을 검색합니다.
 * **3D Interactive Vinyl**: **Threlte(Three.js)**를 사용하여 실제처럼 회전하고 빛을 반사하는 3D LP판을 렌더링합니다.
