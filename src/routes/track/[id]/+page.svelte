@@ -3,15 +3,15 @@
     import { goto } from '$app/navigation';
 
     /**
-     * Props received from the server load function.
-     * Contains the track data fetched by +page.server.ts.
+     * 서버 로드 함수(load function)로부터 전달받은 Props입니다.
+     * +page.server.ts에서 페칭한 트랙 데이터를 포함하고 있습니다.
      * @property {{ track: any }} data
      */
     let { data } = $props();
 
     /**
-     * Navigates the user back to the main search page.
-     * Uses SvelteKit's client-side navigation.
+     * 메인 검색 페이지로 돌아가는 핸들러입니다.
+     * SvelteKit의 클라이언트 사이드 네비게이션을 사용하여 이동합니다.
      */
     const handleBack = () => {
         goto('/');
