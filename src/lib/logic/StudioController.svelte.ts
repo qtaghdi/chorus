@@ -1,5 +1,5 @@
-import { Spring } from 'svelte/motion';
-import { WebGLRenderer } from 'three';
+import {Spring} from 'svelte/motion';
+import {WebGLRenderer} from 'three';
 
 /**
  * @description
@@ -26,8 +26,8 @@ export class StudioControllerSvelte {
     #dataArray: Uint8Array<ArrayBuffer> | null = null;
     #animationFrameId?: number;
 
-    rotationSpeed = new Spring(0, { stiffness: 0.05, damping: 0.2 });
-    visualizerScale = new Spring(1, { stiffness: 0.2, damping: 0.5 });
+    rotationSpeed = new Spring(0, {stiffness: 0.05, damping: 0.2});
+    visualizerScale = new Spring(1, {stiffness: 0.2, damping: 0.5});
 
     constructor(track: any) {
         this.#track = track;
@@ -35,7 +35,7 @@ export class StudioControllerSvelte {
 
     /**
      * @description
-     * 컨트롤러 초기화 (❗ 자동 재생 없음)
+     * 컨트롤러 초기화
      */
     init(): void {
         if (this.#track.cover) {
@@ -171,4 +171,82 @@ export class StudioControllerSvelte {
             antialias: true
         });
     }
+
+    /**
+     * @description
+     * Web Share API를 사용하여 현재 트랙 정보를 공유합니다.
+     *
+     * @remarks
+     * - Web Share API를 지원하는 브라우저에서는 네이티브 공유 UI 사용
+     * - 지원하지 않는 경우 현재 URL을 클립보드에 복사
+     *
+     * @returns {Promise<void>}
+     */
+    async handleShare(): Promise<void> {
+        this.triggerHaptic();
+
+        const shareData = {
+            title: 'CHORUS',
+            text: `🎵 ${this.#track.title} - ${this.#track.artist}\n"${
+                this.customMessage || '이 노래 같이 들을래?'
+            }"`,
+            url: window.location.href
+        };
+
+        try {
+            if (navigator.share && navigator.canShare?.(shareData)) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(window.location.href);
+                alert('링크가 복사되었습니다!');
+            }
+        } catch (err) {
+            console.warn('Share failed:', err);
+        }
+    }
+
+    /**
+     * @description
+     * 지정된 DOM 요소를 이미지(PNG)로 캡처하여 다운로드합니다.
+     *
+     * @remarks
+     * - `html-to-image` 라이브러리를 동적 import로 사용
+     * - 캡처 전 약간의 지연을 주어 렌더링 안정성 확보
+     *
+     * @param elementId
+     *  - 캡처할 DOM 요소의 ID
+     *
+     * @returns {Promise<void>}
+     */
+    async downloadImage(elementId: string): Promise<void> {
+        this.triggerHaptic();
+
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        this.isSaving = true;
+
+        try {
+            const {toPng} = await import('html-to-image');
+
+            // DOM 렌더 안정화를 위한 짧은 딜레이
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const dataUrl = await toPng(element, {
+                cacheBust: true,
+                pixelRatio: 2
+            });
+
+            const link = document.createElement('a');
+            link.download = `chorus_${this.#track.title}.png`;
+            link.href = dataUrl;
+            link.click();
+        } catch (err) {
+            alert('이미지 저장에 실패했습니다.');
+            console.error(err);
+        } finally {
+            this.isSaving = false;
+        }
+    }
 }
+

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { fade, fly } from 'svelte/transition';
+    import { fly } from 'svelte/transition';
     import { SearchController, type Track } from '$lib/logic/SearchController.svelte';
 
     /**
@@ -53,7 +53,7 @@
                    bg-linear-to-r from-indigo-900 via-purple-900 to-blue-900
                    pointer-events-none"
                 aria-hidden="true"
-        />
+        ></div>
 
         <div
                 class="relative flex items-center
