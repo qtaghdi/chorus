@@ -40,7 +40,7 @@ export class StudioControllerSvelte {
     #audio: HTMLAudioElement | null = null;
     #audioContext: AudioContext | null = null;
     #analyser: AnalyserNode | null = null;
-    #dataArray: Uint8Array | null = null;
+    #dataArray: Uint8Array<ArrayBuffer> | null = null;
     #animationFrameId?: number;
 
     /**
