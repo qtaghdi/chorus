@@ -44,6 +44,7 @@
 		"@threlte/core": "^8.3.1",
 		"@threlte/extras": "^9.7.1",
 		"html-to-image": "^1.11.13",
+		"ky": "^1.14.2",
 		"three": "^0.182.0"
 	}
 }
