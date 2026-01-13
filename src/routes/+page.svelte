@@ -1,6 +1,6 @@
 <script lang="ts">
-    import SearchSection from '$lib/components/section/search.svelte';
-    import StudioSection from '$lib/components/section/studio.svelte';
+    import SearchSection from '$lib/components/section/Search.svelte';
+    import StudioSection from '$lib/components/section/Studio.svelte';
 
     /**
      * Holds the currently selected track data.
