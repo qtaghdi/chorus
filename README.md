@@ -55,6 +55,14 @@ pnpm install
 pnpm build
 ```
 
+<br />
+
+## Notes for Developers
+
+* **Node.js Version**: Node 20 이상을 권장합니다.
+* **Case Sensitivity**: Vercel(Linux 환경) 배포 시 파일명 대소문자를 엄격하게 구분합니다. 컴포넌트 파일명은 반드시 `PascalCase`를 유지해주세요. (예: `Search.svelte`)
+* **Haptics**: 햅틱 피드백 기능은 `navigator.vibrate`를 지원하는 모바일 기기(주로 Android)에서만 작동합니다.
+
 ---
 ## License
 
