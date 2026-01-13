@@ -6,48 +6,37 @@
     import { onMount, onDestroy } from 'svelte';
     import { fade, scale } from 'svelte/transition';
     import { WebGLRenderer } from 'three';
+    import { spring } from 'svelte/motion';
 
     /**
      * Component Properties
-     * @property {any} track - The track object containing metadata (title, artist, cover, audio preview).
-     * @property {() => void} onback - Callback function to navigate back to the search screen.
      */
     let { track, onback } = $props();
 
-    /**
-     * Indicates whether the image download process is currently active.
-     * @type {boolean}
-     */
     let isSaving = $state(false);
-
-    /**
-     * Indicates whether the component has mounted.
-     * @type {boolean}
-     */
     let isMounted = $state(false);
 
-    // --- Audio State Management ---
-    /** @type {HTMLAudioElement | null} Audio instance for preview playback. */
+    // Audio related state
     let audio: HTMLAudioElement | null = null;
-
-    /** @type {boolean} Tracks the playing status of the audio. */
     let isPlaying = $state(false);
-
-    /** @type {number} Current playback progress percentage (0-100). */
     let progress = $state(0);
-
-    /** @type {string} Formatted current playback time (MM:SS). */
     let currentTimeStr = $state("0:00");
-
-    /** @type {string} Formatted total duration time (MM:SS). */
     let durationStr = $state("0:30");
-
-    /** @type {string} Extracted dominant color from album cover. */
     let dominantColor = $state("50, 50, 50");
 
-    /**
-     * Triggers a short haptic feedback vibration.
-     */
+    // 🎵 Audio Visualizer State
+    let audioContext: AudioContext | null = null;
+    let analyser: AnalyserNode | null = null;
+    let dataArray: Uint8Array | null = null;
+    let animationFrameId: number;
+
+    // 🎛️ Bass Power (0.0 ~ 1.0) - 음악의 비트 강도
+    let bassPower = $state(0);
+
+    // 부드러운 움직임을 위한 Spring Motion
+    const rotationSpeed = spring(0, { stiffness: 0.05, damping: 0.2 });
+    const visualizerScale = spring(1, { stiffness: 0.2, damping: 0.5 });
+
     const triggerHaptic = () => {
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate(10);
@@ -55,50 +44,93 @@
     };
 
     /**
-     * Handles the native sharing functionality.
-     * Opens the OS native share sheet on mobile.
-     * Fallback to clipboard copy on desktop.
+     * Web Audio API 설정 (비주얼라이저 핵심)
+     * 브라우저 보안 정책상 사용자가 처음 클릭(Play)할 때 실행해야 함.
      */
-    const handleShare = async () => {
-        triggerHaptic();
-
-        const shareData = {
-            title: 'CHORUS',
-            text: `🎵 ${track.title} - ${track.artist}\n이 노래 어때요? 바이닐 카드로 확인해보세요.`,
-            url: window.location.href // Current URL with Track ID
-        };
+    const setupAudioContext = () => {
+        if (!audio || audioContext) return;
 
         try {
-            if (navigator.share && navigator.canShare(shareData)) {
-                // Mobile Native Share
-                await navigator.share(shareData);
-            } else {
-                // PC / Unsupported Fallback
-                await navigator.clipboard.writeText(window.location.href);
-                alert('링크가 클립보드에 복사되었습니다! 🔗');
-            }
-        } catch (err) {
-            console.log('Share canceled or failed', err);
+            // 1. 오디오 컨텍스트 생성
+            const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+            audioContext = new AudioContext();
+
+            // 2. 오디오 소스 연결
+            const source = audioContext.createMediaElementSource(audio);
+            analyser = audioContext.createAnalyser();
+
+            // 3. 분석기 설정 (FFT 사이즈: 정밀도)
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+
+            // 4. 스피커로 출력 연결
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+        } catch (e) {
+            console.warn("CORS or Audio Context Error: Visualizer disabled", e);
         }
     };
 
     /**
-     * Extracts the dominant color from the album cover image using the Canvas API.
+     * 실시간으로 주파수를 분석하여 bassPower를 업데이트하는 루프
      */
+    const analyzeLoop = () => {
+        if (!isPlaying || !analyser || !dataArray) return;
+
+        // 현재 주파수 데이터 가져오기
+        analyser.getByteFrequencyData(dataArray);
+
+        // 저음역대 (배열의 앞부분) 평균 계산
+        // 0~20번 인덱스 정도가 킥드럼/베이스 소리
+        let sum = 0;
+        const bassRange = 10;
+        for (let i = 0; i < bassRange; i++) {
+            sum += dataArray[i];
+        }
+
+        // 0 ~ 1 사이 값으로 정규화 (255는 최대 볼륨)
+        const average = sum / bassRange;
+        const normalized = average / 255;
+
+        // 상태 업데이트 -> 3D 씬에 반영됨
+        bassPower = normalized;
+
+        // 스프링 애니메이션 업데이트 (비트에 맞춰 쿵쿵)
+        visualizerScale.set(1 + normalized * 0.15); // 크기는 최대 1.15배까지
+
+        animationFrameId = requestAnimationFrame(analyzeLoop);
+    };
+
+    const handleShare = async () => {
+        triggerHaptic();
+        const shareData = {
+            title: 'CHORUS',
+            text: `🎵 ${track.title} - ${track.artist}\n이 노래 어때요? 바이닐 카드로 확인해보세요.`,
+            url: window.location.href
+        };
+        try {
+            if (navigator.share && navigator.canShare(shareData)) {
+                await navigator.share(shareData);
+            } else {
+                await navigator.clipboard.writeText(window.location.href);
+                alert('링크가 클립보드에 복사되었습니다! 🔗');
+            }
+        } catch (err) {
+            console.log('Share canceled', err);
+        }
+    };
+
     const extractColor = (imgUrl: string) => {
         const img = new Image();
         img.crossOrigin = "Anonymous";
         img.src = imgUrl;
-
         img.onload = () => {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             if (!ctx) return;
-
-            canvas.width = 1;
-            canvas.height = 1;
+            canvas.width = 1; canvas.height = 1;
             ctx.drawImage(img, 0, 0, 1, 1);
-
             const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
             dominantColor = `${r}, ${g}, ${b}`;
         };
@@ -113,13 +145,12 @@
 
     onMount(() => {
         isMounted = true;
-
-        if (track.cover) {
-            extractColor(track.cover);
-        }
+        if (track.cover) extractColor(track.cover);
 
         if (track.audio) {
-            audio = new Audio(track.audio);
+            audio = new Audio();
+            audio.crossOrigin = "anonymous"; // ✅ 중요: 비주얼라이저를 위해 CORS 허용
+            audio.src = track.audio;
             audio.volume = 0.5;
 
             audio.addEventListener('timeupdate', () => {
@@ -133,13 +164,21 @@
 
             audio.addEventListener('ended', () => {
                 isPlaying = false;
+                rotationSpeed.set(0);
+                visualizerScale.set(1);
+                bassPower = 0;
                 progress = 0;
                 currentTimeStr = "0:00";
                 if (audio) audio.currentTime = 0;
+                cancelAnimationFrame(animationFrameId);
             });
 
+            // 자동 재생 시도
             audio.play().then(() => {
                 isPlaying = true;
+                rotationSpeed.set(2);
+                setupAudioContext(); // 자동 재생 성공 시 컨텍스트 설정
+                analyzeLoop();
             }).catch(e => {
                 console.warn('Autoplay blocked', e);
                 isPlaying = false;
@@ -152,13 +191,31 @@
             audio.pause();
             audio = null;
         }
+        if (audioContext) {
+            audioContext.close();
+        }
+        cancelAnimationFrame(animationFrameId);
     });
 
     const toggleAudio = () => {
         triggerHaptic();
         if (!audio) return;
-        if (isPlaying) audio.pause();
-        else audio.play();
+
+        // 첫 클릭 시 오디오 컨텍스트가 없거나 멈춰있으면 시작
+        if (!audioContext) setupAudioContext();
+        if (audioContext?.state === 'suspended') audioContext.resume();
+
+        if (isPlaying) {
+            audio.pause();
+            rotationSpeed.set(0);
+            visualizerScale.set(1); // 멈추면 크기 원상복구
+            bassPower = 0;
+            cancelAnimationFrame(animationFrameId);
+        } else {
+            audio.play();
+            rotationSpeed.set(2);
+            analyzeLoop(); // 분석 루프 시작
+        }
         isPlaying = !isPlaying;
     };
 
@@ -175,12 +232,10 @@
         triggerHaptic();
         const element = document.getElementById('capture-area');
         if (!element) return;
-
         isSaving = true;
         try {
             const { toPng } = await import('html-to-image');
             await new Promise(resolve => setTimeout(resolve, 100));
-
             const dataUrl = await toPng(element, { cacheBust: true, pixelRatio: 3 });
             const link = document.createElement('a');
             link.download = `chorus_${track.title.replace(/\s+/g, '_')}.png`;
@@ -198,8 +253,10 @@
 <div class="flex flex-col items-center w-full h-dvh pt-6 pb-10 relative z-20" in:fade>
 
     <div
-            class="absolute inset-0 z-0 transition-colors duration-1000 ease-in-out opacity-60"
-            style="background: radial-gradient(circle at 50% 30%, rgba({dominantColor}, 0.6) 0%, rgba(0,0,0,0) 70%);"
+            class="absolute inset-0 z-0 transition-colors duration-100 ease-linear"
+            style="
+                background: radial-gradient(circle at 50% 30%, rgba({dominantColor}, {0.6 + bassPower * 0.2}) 0%, rgba(0,0,0,0) 70%);
+            "
     ></div>
 
     <div class="w-full max-w-sm flex justify-between items-center px-6 mb-4 z-30">
@@ -236,15 +293,20 @@
             <div class="absolute inset-0 z-10">
                 {#if isMounted}
                     <Canvas {createRenderer}>
-                        <T.AmbientLight intensity={1.5} />
-                        <T.DirectionalLight position={[5, 10, 5]} intensity={2} />
+                        <T.AmbientLight intensity={1.5 + bassPower * 2} />
+                        <T.DirectionalLight position={[5, 10, 5]} intensity={2 + bassPower} />
+
                         <T.PerspectiveCamera makeDefault position={[0, 0, 8]} fov={50} />
-                        <Float floatIntensity={0.5} rotationIntensity={0.2} speed={isPlaying ? 2 : 0}>
-                            {#key track.cover}
-                                <Vinyl albumCover={track.cover} />
-                            {/key}
+
+                        <Float floatIntensity={0.5} rotationIntensity={0.2} speed={$rotationSpeed}>
+                            <T.Group scale={$visualizerScale}>
+                                {#key track.cover}
+                                    <Vinyl albumCover={track.cover} />
+                                {/key}
+                            </T.Group>
                         </Float>
-                        <ContactShadows opacity={0.5} scale={10} blur={2.5} far={10} color="#000000" />
+
+                        <ContactShadows opacity={0.5 + bassPower * 0.3} scale={10} blur={2.5} far={10} color="#000000" />
                     </Canvas>
                 {/if}
             </div>
@@ -270,7 +332,9 @@
                             class="w-12 h-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 text-white"
                     >
                         {#if isPlaying}
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clip-rule="evenodd" /></svg>
+                            <div class="scale-110">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M6.75 5.25a.75.75 0 01.75-.75H9a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H7.5a.75.75 0 01-.75-.75V5.25zm7.5 0A.75.75 0 0115 4.5h1.5a.75.75 0 01.75.75v13.5a.75.75 0 01-.75.75H15a.75.75 0 01-.75-.75V5.25z" clip-rule="evenodd" /></svg>
+                            </div>
                         {:else}
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 ml-0.5"><path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653z" clip-rule="evenodd" /></svg>
                         {/if}
