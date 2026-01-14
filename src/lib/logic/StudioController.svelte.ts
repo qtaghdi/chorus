@@ -207,43 +207,61 @@ export class StudioControllerSvelte {
 
     /**
      * @description
-     * 지정된 DOM 요소를 이미지(PNG)로 캡처하여 다운로드합니다.
+     * 현재 화면을 이미지로 저장
      *
-     * @remarks
-     * - `html-to-image` 라이브러리를 동적 import로 사용
-     * - 캡처 전 약간의 지연을 주어 렌더링 안정성 확보
-     *
-     * @param elementId
-     *  - 캡처할 DOM 요소의 ID
-     *
-     * @returns {Promise<void>}
+     * - 데스크톱: 즉시 파일 다운로드
+     * - 모바일: 새 탭에서 이미지 열기 (사용자가 직접 저장)
      */
     async downloadImage(elementId: string): Promise<void> {
+        if (this.isSaving) return;
+
         this.triggerHaptic();
-
-        const element = document.getElementById(elementId);
-        if (!element) return;
-
         this.isSaving = true;
 
         try {
-            const {toPng} = await import('html-to-image');
+            const element = document.getElementById(elementId);
+            if (!element) return;
 
-            // DOM 렌더 안정화를 위한 짧은 딜레이
+            const { toPng } = await import('html-to-image');
+
+            // 렌더 안정화 (모바일 필수)
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const dataUrl = await toPng(element, {
                 cacheBust: true,
-                pixelRatio: 2
+                pixelRatio: window.devicePixelRatio || 2
             });
 
-            const link = document.createElement('a');
-            link.download = `chorus_${this.#track.title}.png`;
-            link.href = dataUrl;
-            link.click();
+            const isMobile =
+                /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+            if (isMobile) {
+                /**
+                 * 모바일:
+                 * - 새 탭에서 이미지 표시
+                 * - 사용자가 길게 눌러 저장
+                 */
+                const win = window.open();
+                if (win) {
+                    win.document.write(
+                        `<img src="${dataUrl}" style="width:100%;height:auto;" />`
+                    );
+                } else {
+                    alert('이미지를 길게 눌러 저장해주세요.');
+                }
+            } else {
+                /**
+                 * 데스크톱:
+                 * - 즉시 다운로드
+                 */
+                const link = document.createElement('a');
+                link.download = `chorus_${this.#track.title}.png`;
+                link.href = dataUrl;
+                link.click();
+            }
         } catch (err) {
+            console.error('Image save failed', err);
             alert('이미지 저장에 실패했습니다.');
-            console.error(err);
         } finally {
             this.isSaving = false;
         }
